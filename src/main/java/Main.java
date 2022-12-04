@@ -8,6 +8,7 @@ public class Main {
         try (ServerSocket serverSocket = new ServerSocket(6379);
              Socket clientSocket = serverSocket.accept()) {
             serverSocket.setReuseAddress(true);
+            clientSocket.getOutputStream().write("+PONG\r\n".getBytes());
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
         }
