@@ -4,7 +4,6 @@ import java.util.concurrent.*;
 
 public class Main {
     public static void main(String[] args) throws IOException {
-        int messages = 0;
         int cpuCores = Runtime.getRuntime().availableProcessors();
         ExecutorService executor = Executors.newFixedThreadPool(cpuCores);
 
@@ -14,7 +13,7 @@ public class Main {
                 Socket clientSocket = serverSocket.accept();
                 executor.submit(() -> {
                     try {
-                        handleIncomingConnection(messages, clientSocket);
+                        handleIncomingConnection(clientSocket);
                     } catch (IOException e) {
                     }
                 });
@@ -22,15 +21,13 @@ public class Main {
         }
     }
 
-    private static void handleIncomingConnection(int messages,
-                                                 Socket clientSocket) throws IOException {
+    private static void handleIncomingConnection(Socket clientSocket) throws IOException {
         InputStream in = clientSocket.getInputStream();
         byte[] bytes = new byte[1024];
         while (in.read(bytes) != -1) {
-            System.out.println("[" + Thread.currentThread() + "] Received message #" + messages + ": " + new String(bytes, 0, bytes.length));
+            System.out.println("[" + Thread.currentThread() + "] Received message: " + new String(bytes, 0, bytes.length));
             clientSocket.getOutputStream().write("+PONG\r\n".getBytes());
-            System.out.println("[" + Thread.currentThread() + "] Send PONG #" + messages);
-            messages++;
+            System.out.println("[" + Thread.currentThread() + "] Send PONG");
         }
         clientSocket.close();
     }
