@@ -30,11 +30,8 @@ public class Main {
                 String response;
                 while (in.read(bytes) != -1) {
                     String receivedMessage = parseString(bytes);
-                    if (receivedMessage.startsWith("*")) {
-                        response = handleBulkCommand(receivedMessage);
-                    } else {
-                        response = handleSingleCommand(receivedMessage.substring(0, receivedMessage.indexOf('\r' )));
-                    }
+                    List<String> args = parseArguments(receivedMessage);
+                    response = handleCommand(args);
                     clientSocket.getOutputStream().write((response + "\r\n").getBytes());
                 }
             }
@@ -43,24 +40,16 @@ public class Main {
         }
     }
 
-    private static String handleSingleCommand(String receivedMessage) {
-        System.out.println("[" + Thread.currentThread() + "] Received message: " + receivedMessage);
-        if ("PING".equalsIgnoreCase(receivedMessage)) {
-            return handlePing();
-        } else {
-            String response = "Unknown command: " + receivedMessage;
-            System.out.println("[" + Thread.currentThread() + "] " + response);
-            return response;
-        }
-    }
-
-    private static String handleBulkCommand(String receivedMessage) {
-        List<String> args = parseBulkMessageArguments(receivedMessage);
-        return handleCommand(args);
+    private static List<String> parseArguments(String receivedMessage) {
+        List<String> args = Arrays.stream(receivedMessage.split("\r\n"))
+                .filter(arg -> !arg.trim().isEmpty() && !arg.startsWith("*") && !arg.startsWith("$")).collect(Collectors.toList());
+        System.out.println("[" + Thread.currentThread() + "] Received bulk args: " + args);
+        return args;
     }
 
     private static String handleCommand(List<String> args) {
         String command = args.get(0);
+        System.out.println("[" + Thread.currentThread() + "] Received command: " + command);
         if ("ECHO".equalsIgnoreCase(command)) {
             return handleEcho(args.get(1));
         } else if ("PING".equalsIgnoreCase(command)) {
@@ -90,11 +79,5 @@ public class Main {
         return new String(bytes, 0, bytes.length);
     }
 
-    private static List<String> parseBulkMessageArguments(String receivedMessage) {
-        List<String> args = Arrays.stream(receivedMessage.split("\r\n"))
-                .filter(arg -> !arg.trim().isEmpty() && !arg.startsWith("*") && !arg.startsWith("$")).collect(Collectors.toList());
-        System.out.println("[" + Thread.currentThread() + "] Received bulk args: " + args);
-        return args;
-    }
 }
 
