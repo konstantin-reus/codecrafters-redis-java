@@ -5,6 +5,8 @@ import java.util.concurrent.*;
 import java.util.stream.*;
 
 public class Main {
+    private static final Map<String, String> storage = new ConcurrentHashMap<>();
+
     public static void main(String[] args) throws IOException {
         int cpuCores = Runtime.getRuntime().availableProcessors();
         ExecutorService executor = Executors.newFixedThreadPool(cpuCores);
@@ -43,7 +45,7 @@ public class Main {
     private static List<String> parseArguments(String receivedMessage) {
         List<String> args = Arrays.stream(receivedMessage.split("\r\n"))
                 .filter(arg -> !arg.trim().isEmpty() && !arg.startsWith("*") && !arg.startsWith("$")).collect(Collectors.toList());
-        System.out.println("[" + Thread.currentThread() + "] Received bulk args: " + args);
+        System.out.println("[" + Thread.currentThread() + "] Received args: " + args);
         return args;
     }
 
@@ -54,9 +56,27 @@ public class Main {
             return handleEcho(args.get(1));
         } else if ("PING".equalsIgnoreCase(command)) {
             return handlePing();
+        } else if ("SET".equalsIgnoreCase(command)) {
+            return handleSet(args.get(1), args.get(2));
+        } else if ("GET".equalsIgnoreCase(command)) {
+            return handleGet(args.get(1));
         } else {
             return handleUnknownCommand(command);
         }
+    }
+
+    private static String handleGet(String key) {
+        String response = storage.getOrDefault(key, "-1");
+        if (response.equals("-1")) {
+            return "$-1";
+        } else {
+            return "$" + response.length() + "\r\n" + response + "\r\n";
+        }
+    }
+
+    private static String handleSet(String key, String value) {
+        storage.put(key, value);
+        return "+OK";
     }
 
     private static String handleUnknownCommand(String command) {
@@ -78,6 +98,5 @@ public class Main {
     private static String parseString(byte[] bytes) {
         return new String(bytes, 0, bytes.length);
     }
-
 }
 
