@@ -1,11 +1,14 @@
 import java.io.*;
 import java.net.*;
+import java.time.*;
+import java.time.temporal.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.*;
 
 public class Main {
     private static final Map<String, String> storage = new ConcurrentHashMap<>();
+    private static final Map<String, Instant> keyToExpirationTime = new ConcurrentHashMap<>();
 
     public static void main(String[] args) throws IOException {
         int cpuCores = Runtime.getRuntime().availableProcessors();
@@ -57,7 +60,11 @@ public class Main {
         } else if ("PING".equalsIgnoreCase(command)) {
             return handlePing();
         } else if ("SET".equalsIgnoreCase(command)) {
-            return handleSet(args.get(1), args.get(2));
+            if (args.size() > 3) {
+                return handleSetWithExpiration(args.get(1), args.get(2), Integer.parseInt(args.get(4)));
+            } else {
+                return handleSet(args.get(1), args.get(2));
+            }
         } else if ("GET".equalsIgnoreCase(command)) {
             return handleGet(args.get(1));
         } else {
@@ -65,12 +72,18 @@ public class Main {
         }
     }
 
+    private static String handleSetWithExpiration(String key, String value, int expireAfterMs) {
+        keyToExpirationTime.put(key, Instant.now().plus(expireAfterMs, ChronoUnit.MILLIS));
+        return handleSet(key, value);
+    }
+
     private static String handleGet(String key) {
+        boolean isExpired = keyToExpirationTime.get(key) != null && keyToExpirationTime.get(key).isBefore(Instant.now());
         String response = storage.getOrDefault(key, "-1");
-        if (response.equals("-1")) {
+        if (isExpired || response.equals("-1")) {
             return "$-1";
         } else {
-            return "$" + response.length() + "\r\n" + response + "\r\n";
+            return "$" + response.length() + "\r\n" + response;
         }
     }
 
